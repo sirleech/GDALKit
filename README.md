@@ -72,7 +72,7 @@ No `-lc++` and no bundled `proj.db` in the app — the package owns both
 
 ```bash
 cd scripts && ./build-gdal-ios.sh            # tries a prebuilt release asset first,
-                                             # else a ~10–20 min source build
+                                             # else a ~10 min source build
 ./build-gdal-ios.sh --force                  # always build from source
 ```
 

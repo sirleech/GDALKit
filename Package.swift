@@ -30,7 +30,7 @@ let package = Package(
         .binaryTarget(
             name: "CGDAL",
             url: "https://github.com/sirleech/GDALKit/releases/download/gdalkit-3.12.4/GDALKit.xcframework.zip",
-            checksum: "82bc46323e6cae1d5a7879a74c23a021f62f5a06d7852134c9b33c3d8d75934e"
+            checksum: "4684e78ef85eda87f345ccfe6c7e64876cc0d65168b44b9f83c47afab386cc81"
         ),
         // Local-path alternative for developing against a freshly built framework
         // (run scripts/build-gdal-ios.sh, then comment out the url target above):

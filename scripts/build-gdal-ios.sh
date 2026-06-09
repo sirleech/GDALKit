@@ -33,7 +33,7 @@
 #     combo is GDAL 3.13.1 + PROJ 9.8.1.
 #   * ALWAYS verify the SQLite amalgamation filename/URL on
 #     https://www.sqlite.org/download.html (it encodes the version + year).
-#   * First run downloads sources and takes ~10-20 min.
+#   * First run downloads sources and takes ~10 min.
 # =============================================================================
 set -euo pipefail
 
@@ -48,7 +48,7 @@ DEPLOYMENT_TARGET="15.0"
 # ---- prebuilt artifact ------------------------------------------------------
 # The known-good GDALKit.xcframework (the SwiftPM binaryTarget asset, with the
 # CGDAL modulemap in its Headers) is published as a GitHub Release asset so a
-# fresh checkout needn't run the full (~10-20 min) source build, and is resilient
+# fresh checkout needn't run the full (~10 min) source build, and is resilient
 # to upstream source-URL rot. The tag is version-matched, so bumping GDAL_VERSION
 # naturally falls back to a source build until a new asset exists. (proj.db + gdal
 # data are committed at Sources/GDALKit/Resources/share, so the prebuilt only needs
@@ -246,7 +246,7 @@ echo "    import GDALKit     // GDALEnvironment, GDALRaster, CoordinateProjector
 echo "    import CGDAL       // raw GDAL/PROJ C API, if needed"
 echo "-lc++ is applied via Package.swift linkerSettings; no bridging header needed."
 echo
-echo "To publish a prebuilt (so consumers skip the ~20min build):"
+echo "To publish a prebuilt (so consumers skip the ~10min build):"
 echo "    cd build/output && zip -ry GDALKit.xcframework.zip GDALKit.xcframework && cd -"
 echo "    swift package compute-checksum build/output/GDALKit.xcframework.zip"
 echo "    gh release create $PREBUILT_TAG build/output/GDALKit.xcframework.zip \\"

@@ -49,7 +49,7 @@ Anything importing SwiftUI/UIKit/MapKit/CoreLocation does not come here.
 
 ```bash
 cd scripts && ./build-gdal-ios.sh            # prebuilt release asset, else source build
-./build-gdal-ios.sh --force                  # always source build (~10–20 min)
+./build-gdal-ios.sh --force                  # always source build (~10 min)
 ```
 
 Publish a prebuilt so consumers skip the build (Phase B — not done yet):
