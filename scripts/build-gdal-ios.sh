@@ -51,7 +51,7 @@ DEPLOYMENT_TARGET="15.0"
 # is resilient to upstream source-URL rot. The tag is version-matched, so bumping
 # GDAL_VERSION naturally falls back to a source build until a new asset exists.
 # Skip the prebuilt and force a source build with:  ./build-gdal-ios.sh --force
-PREBUILT_REPO="sirleech/geospatial-ios-swift-kit"
+PREBUILT_REPO="sirleech/GDALKit"
 PREBUILT_TAG="gdalkit-${GDAL_VERSION}"
 PREBUILT_URL="https://github.com/${PREBUILT_REPO}/releases/download/${PREBUILT_TAG}/GDALKit-prebuilt.tgz"
 FORCE_BUILD=0

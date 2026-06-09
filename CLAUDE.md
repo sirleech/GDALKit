@@ -1,4 +1,4 @@
-# geospatial-ios-swift-kit
+# GDALKit
 
 GDAL + PROJ + SQLite for iOS as a **Swift package**: a prebuilt static
 `GDALKit.xcframework` (C module `CGDAL`), a thin MapKit-free Swift wrapper
@@ -57,7 +57,7 @@ Publish a prebuilt so consumers skip the build (Phase B — not done yet):
 cd build/output && zip -ry GDALKit.xcframework.zip GDALKit.xcframework && cd -
 swift package compute-checksum build/output/GDALKit.xcframework.zip
 gh release create gdalkit-<GDAL_VERSION> build/output/GDALKit.xcframework.zip \
-    --repo sirleech/geospatial-ios-swift-kit --title "GDALKit (GDAL <ver>)"
+    --repo sirleech/GDALKit --title "GDALKit (GDAL <ver>)"
 # then switch Package.swift CGDAL to url:+checksum: (a commented stub is in place)
 ```
 

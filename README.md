@@ -1,4 +1,4 @@
-# geospatial-ios-swift-kit
+# GDALKit
 
 GDAL + PROJ + SQLite for iOS, packaged as a **Swift package**: a prebuilt static
 `GDALKit.xcframework`, a thin **MapKit-free** Swift wrapper, and the PROJ/GDAL
@@ -48,7 +48,7 @@ let merc = p?.project(x: 151.2093, y: -33.8688)   // (x: lon, y: lat) → metres
 
 ```swift
 // Package.swift
-.package(url: "https://github.com/sirleech/geospatial-ios-swift-kit.git", from: "0.1.0")
+.package(url: "https://github.com/sirleech/GDALKit.git", from: "0.1.0")
 ```
 
 XcodeGen (`project.yml`):
@@ -56,9 +56,9 @@ XcodeGen (`project.yml`):
 ```yaml
 packages:
   GDALKit:
-    url: https://github.com/sirleech/geospatial-ios-swift-kit.git
+    url: https://github.com/sirleech/GDALKit.git
     from: 0.1.0
-    # local dev:  path: ../geospatial-ios-swift-kit
+    # local dev:  path: ../GDALKit
 targets:
   YourApp:
     dependencies:

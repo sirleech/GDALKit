@@ -1,7 +1,7 @@
 // swift-tools-version: 5.9
 import PackageDescription
 
-// geospatial-ios-swift-kit
+// GDALKit
 //
 // A prebuilt GDAL + PROJ + SQLite static `GDALKit.xcframework` plus a thin,
 // MapKit-free Swift wrapper (`GDALKit`) and the PROJ/GDAL runtime data
@@ -32,7 +32,7 @@ let package = Package(
         // remove the local-path line above):
         // .binaryTarget(
         //     name: "CGDAL",
-        //     url: "https://github.com/sirleech/geospatial-ios-swift-kit/releases/download/gdalkit-<v>/GDALKit.xcframework.zip",
+        //     url: "https://github.com/sirleech/GDALKit/releases/download/gdalkit-<v>/GDALKit.xcframework.zip",
         //     checksum: "<swift package compute-checksum GDALKit.xcframework.zip>"
         // ),
 
