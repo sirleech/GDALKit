@@ -107,11 +107,15 @@ under `Sources/GDALKit/Resources/share`). The first release is published:
 
 ## Verifying (done — re-run after changes)
 
-**Principle: tests must not change library code.** Tests should exercise the
-package's public API as it ships — do **not** add test-only hooks, expose
-internals, or tweak behaviour in `Sources/` just to make a test pass or
+**Principle: adding tests must never risk breaking the library.** Tests stay
+strictly separate from the library sources, so you can add them freely and
+confidently — a new test exercises the package's public API *as it ships* and
+changes nothing in `Sources/`, so it cannot regress behaviour. That safety only
+holds if tests don't reach into production code, so do **not** add test-only
+hooks, expose internals, or tweak behaviour in `Sources/` to make a test pass or
 observable. If a test genuinely needs an API/source change to be testable, **stop
-and ask first** — whether to add it is a design decision, not a test detail.
+and ask first** — it would touch the library, so it's a design decision, not a
+test detail.
 
 Verified on the iOS simulator + iPhone 15 Pro, and consumed by GeoMapViewer
 (GeoTIFF + GeoPDF maps warp and register correctly). An iOS-only xcframework
