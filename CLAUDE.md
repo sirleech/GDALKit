@@ -64,10 +64,10 @@ gh release create gdalkit-<GDAL_VERSION> build/output/GDALKit.xcframework.zip \
 
 Versioning: the package version tracks GDAL via a `gdalkit-<GDAL_VERSION>` tag.
 
-> **Known wrinkle (fix during the release step):** the script's *prebuilt-fetch*
-> path downloads `GDALKit-prebuilt.tgz` (xcframework **+** share, the old
-> GeoMapViewer scheme), while the SwiftPM url-binaryTarget needs a `.zip` of just
-> the xcframework. Reconcile these when wiring up the first release.
+The script's prebuilt-fetch and the SwiftPM binaryTarget now share one asset —
+`GDALKit.xcframework.zip` (just the framework; proj.db/gdal data are committed
+under `Sources/GDALKit/Resources/share`). The first release is published:
+`gdalkit-3.12.4` (binary asset) + the `0.1.0` SwiftPM semver tag.
 
 ## Build gotchas (do not regress — these are why the build works on iOS)
 

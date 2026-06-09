@@ -46,14 +46,17 @@ IOS_CMAKE_REF="master"
 DEPLOYMENT_TARGET="15.0"
 
 # ---- prebuilt artifact ------------------------------------------------------
-# A known-good GDALKit.xcframework + share/ is published as a GitHub Release
-# asset so a fresh checkout needn't run the full (~10-20 min) source build, and
-# is resilient to upstream source-URL rot. The tag is version-matched, so bumping
-# GDAL_VERSION naturally falls back to a source build until a new asset exists.
-# Skip the prebuilt and force a source build with:  ./build-gdal-ios.sh --force
+# The known-good GDALKit.xcframework (the SwiftPM binaryTarget asset, with the
+# CGDAL modulemap in its Headers) is published as a GitHub Release asset so a
+# fresh checkout needn't run the full (~10-20 min) source build, and is resilient
+# to upstream source-URL rot. The tag is version-matched, so bumping GDAL_VERSION
+# naturally falls back to a source build until a new asset exists. (proj.db + gdal
+# data are committed at Sources/GDALKit/Resources/share, so the prebuilt only needs
+# to supply the framework.) Force a source build with: ./build-gdal-ios.sh --force
 PREBUILT_REPO="sirleech/GDALKit"
 PREBUILT_TAG="gdalkit-${GDAL_VERSION}"
-PREBUILT_URL="https://github.com/${PREBUILT_REPO}/releases/download/${PREBUILT_TAG}/GDALKit-prebuilt.tgz"
+PREBUILT_ASSET="GDALKit.xcframework.zip"
+PREBUILT_URL="https://github.com/${PREBUILT_REPO}/releases/download/${PREBUILT_TAG}/${PREBUILT_ASSET}"
 FORCE_BUILD=0
 [ "${1:-}" = "--force" ] && FORCE_BUILD=1
 
@@ -72,26 +75,26 @@ mkdir -p "$SRC" "$OUT"
 if [ "$FORCE_BUILD" = 0 ] && [ ! -d "$OUT/GDALKit.xcframework" ]; then
   echo "Looking for a prebuilt GDALKit (tag $PREBUILT_TAG)…"
   got=0
-  # The repo is private, so the release asset needs auth: prefer the GitHub CLI
-  # (`gh auth login`), which handles it. Fall back to plain curl if the repo is
-  # public/anonymous. Either path → extract and skip the source build.
+  # The release is public, so plain curl works; we try the GitHub CLI first too
+  # (handles auth if the repo is ever made private again). Either path → unzip and
+  # skip the source build.
   if command -v gh >/dev/null 2>&1 && \
      gh release download "$PREBUILT_TAG" --repo "$PREBUILT_REPO" \
-        --pattern 'GDALKit-prebuilt.tgz' --dir "$OUT" --clobber 2>/dev/null; then
+        --pattern "$PREBUILT_ASSET" --dir "$OUT" --clobber 2>/dev/null; then
     got=1
-  elif curl -fL --retry 2 -o "$OUT/GDALKit-prebuilt.tgz" "$PREBUILT_URL"; then
+  elif curl -fL --retry 2 -o "$OUT/$PREBUILT_ASSET" "$PREBUILT_URL"; then
     got=1
   fi
   if [ "$got" = 1 ]; then
-    tar xf "$OUT/GDALKit-prebuilt.tgz" -C "$OUT" && rm -f "$OUT/GDALKit-prebuilt.tgz"
-    if [ -d "$OUT/GDALKit.xcframework" ] && [ -f "$OUT/share/proj/proj.db" ]; then
-      echo "Using prebuilt GDALKit.xcframework + share/  (skip source build)."
+    (cd "$OUT" && unzip -qo "$PREBUILT_ASSET") && rm -f "$OUT/$PREBUILT_ASSET"
+    if [ -d "$OUT/GDALKit.xcframework" ]; then
+      echo "Using prebuilt GDALKit.xcframework  (skip source build)."
       echo "  -> $OUT   (run with --force to rebuild from source)"
       exit 0
     fi
     echo "Prebuilt archive looked incomplete; falling back to a source build."
   else
-    echo "No prebuilt for '$PREBUILT_TAG' (missing, or not authenticated); building from source."
+    echo "No prebuilt for '$PREBUILT_TAG' (missing); building from source."
   fi
 fi
 [ "$FORCE_BUILD" = 1 ] && echo "--force given: building from source."
