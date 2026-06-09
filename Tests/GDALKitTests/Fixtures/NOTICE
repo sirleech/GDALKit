@@ -1,0 +1,18 @@
+RGB.byte.tif
+============
+
+A small (791×718, 1.7 MB) 3-band RGB GeoTIFF used as a test fixture to exercise
+GDALRaster's reproject-to-Web-Mercator (EPSG:3857) path from a *projected* source
+CRS — the case that fails silently if proj.db isn't found.
+
+  CRS    : EPSG:32618  (WGS 84 / UTM zone 18N)
+  Extent : ~77.7°W, 24.5°N  (over the Bahamas)
+
+Provenance
+----------
+Taken from the rasterio project's test data:
+  https://github.com/rasterio/rasterio/blob/main/tests/data/RGB.byte.tif
+
+It is a clip of a USGS Landsat scene. The Landsat imagery is U.S. Geological
+Survey public-domain data; rasterio itself is distributed under the BSD-3-Clause
+license. Included here solely as a test fixture.

@@ -47,6 +47,10 @@ let package = Package(
         ),
 
         // --- Smoke test ---------------------------------------------------------
-        .testTarget(name: "GDALKitTests", dependencies: ["GDALKit"]),
+        .testTarget(
+            name: "GDALKitTests",
+            dependencies: ["GDALKit", "CGDAL"],   // CGDAL: query driver availability in tests
+            resources: [.copy("Fixtures")]         // RGB.byte.tif → test Bundle.module
+        ),
     ]
 )

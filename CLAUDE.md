@@ -16,7 +16,8 @@ Sources/GDALKit/
   GDALRaster.swift                  warp-to-3857 + windowed reads + DatasetPool (MapKit-free)
   CoordinateProjector.swift         EPSG<->EPSG transform over PROJ (OGR OCT)
   Resources/share/                  proj.db + gdal data — COMMITTED (consumers can't build GDAL)
-Tests/GDALKitTests/                 smoke test: a real 4326<->3857 transform resolves
+Tests/GDALKitTests/                 transform smoke test + bundled-GeoTIFF load/warp test
+  Fixtures/RGB.byte.tif             1.7 MB UTM-18N GeoTIFF fixture (+ NOTICE); offline warp test
 docs/index.html                     minimal API reference
 build/output/                       gitignored: GDALKit.xcframework + share + build trees
 ```
@@ -113,6 +114,16 @@ xcodebuild -scheme GDALKit -sdk iphonesimulator \
 xcodebuild test -scheme GDALKit -sdk iphonesimulator \
   -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
 ```
+
+Tests (all offline + deterministic by default):
+- `testWebMercatorTransformResolves` / `testRoundTripPreservesCoordinate` — prove
+  proj.db loads from `Bundle.module` via a real 4326↔3857 transform.
+- `testLoadAndWarpBundledGeoTIFF` — loads the committed UTM-18N `RGB.byte.tif`
+  fixture and warps it to 3857 (the projected-CRS path that needs proj.db).
+- `testRemoteUSGSGeoPDF` — **opt-in**, set `GDALKIT_NET_TESTS=1`. Downloads a USGS
+  US Topo GeoPDF by URL at test time (not committed, ~33 MB) and asserts behaviour
+  per the build: a PDF driver → loads; no PDF driver (the iOS build) → nil. This
+  documents that GeoPDF decoding is the *app's* job, not the package's.
 
 ## Memory
 
