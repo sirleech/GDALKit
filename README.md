@@ -7,10 +7,6 @@ runtime data (`proj.db` + gdal data) bundled as a package resource.
 Extracted from [GeoMapViewer](https://github.com/sirleech/GeoMapViewer) so it can
 be shared across apps (GeoMapViewer, WaypointGo, …).
 
-> **Status:** scaffolding in place. The prebuilt xcframework is produced by
-> `scripts/build-gdal-ios.sh` and is **not** built/published yet — that's the next
-> step. See [CLAUDE.md](CLAUDE.md) for the build + release flow.
-
 ## Modules
 
 | `import`   | What it is |
