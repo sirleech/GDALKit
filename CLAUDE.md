@@ -115,9 +115,15 @@ the simulator and running the tests:
 ```bash
 xcodebuild -scheme GDALKit -sdk iphonesimulator \
   -destination 'generic/platform=iOS Simulator' build
-xcodebuild test -scheme GDALKit -sdk iphonesimulator \
-  -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
+# Tests live on the GDALKit-Package scheme (the GDALKit/CGDAL product schemes are
+# build-only — `-scheme GDALKit` errors "not configured for the test action").
+xcodebuild test -scheme GDALKit-Package -sdk iphonesimulator \
+  -destination 'id=<booted-arm64-simulator-udid>'   # or name=iPhone 15 Pro
 ```
+
+Because `Package.swift`'s `CGDAL` target is the `url:`+`checksum:` release, this
+tests the **GitHub-published** xcframework (wipe `~/Library/Caches/org.swift.swiftpm`
+to force a fresh download). Switch to the commented `path:` line to test a local build.
 
 Tests (all offline + deterministic by default):
 - `testWebMercatorTransformResolves` / `testRoundTripPreservesCoordinate` — prove
