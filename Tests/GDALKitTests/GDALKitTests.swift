@@ -57,8 +57,9 @@ final class GDALKitTests: XCTestCase {
             Bundle.module.url(forResource: "RGB.byte", withExtension: "tif", subdirectory: "Fixtures"),
             "RGB.byte.tif fixture is missing from the test bundle.")
 
+        let loaded = await GDALRaster.load(from: url)
         let raster = try XCTUnwrap(
-            await GDALRaster.load(from: url),
+            loaded,
             "GDALRaster.load failed — the UTM→3857 warp probably couldn't find proj.db.")
 
         // Footprint is a sane, non-empty Web-Mercator box within the world extent.

@@ -24,17 +24,17 @@ let package = Package(
     ],
     targets: [
         // --- C API (the prebuilt static xcframework) ----------------------------
-        // Local-path binary target for development (Phase A). The xcframework must
-        // exist at this path — run `scripts/build-gdal-ios.sh` (or drop in a
-        // prebuilt) before resolving the package.
-        .binaryTarget(name: "CGDAL", path: "build/output/GDALKit.xcframework"),
-        // Phase B — published release asset (uncomment + fill in the checksum,
-        // remove the local-path line above):
-        // .binaryTarget(
-        //     name: "CGDAL",
-        //     url: "https://github.com/sirleech/GDALKit/releases/download/gdalkit-<v>/GDALKit.xcframework.zip",
-        //     checksum: "<swift package compute-checksum GDALKit.xcframework.zip>"
-        // ),
+        // Published release asset — the prebuilt static framework with the CGDAL
+        // module.modulemap in its Headers. Produced by scripts/build-gdal-ios.sh and
+        // released under a gdalkit-<GDAL_VERSION> tag.
+        .binaryTarget(
+            name: "CGDAL",
+            url: "https://github.com/sirleech/GDALKit/releases/download/gdalkit-3.12.4/GDALKit.xcframework.zip",
+            checksum: "82bc46323e6cae1d5a7879a74c23a021f62f5a06d7852134c9b33c3d8d75934e"
+        ),
+        // Local-path alternative for developing against a freshly built framework
+        // (run scripts/build-gdal-ios.sh, then comment out the url target above):
+        // .binaryTarget(name: "CGDAL", path: "build/output/GDALKit.xcframework"),
 
         // --- Swift wrapper (what apps import) -----------------------------------
         .target(
