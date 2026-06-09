@@ -52,8 +52,7 @@ XCFramework → copy runtime data.
 
 ## 2. Expected output
 
-On success the script ends with this summary (the publish hint at the bottom is
-the manual path — `release-gdalkit.sh` automates it, see §3):
+On success the script ends with this summary:
 
 ```text
 DONE.
@@ -65,12 +64,7 @@ This is a Swift package — consumers add the package and:
     import CGDAL       // raw GDAL/PROJ C API, if needed
 -lc++ is applied via Package.swift linkerSettings; no bridging header needed.
 
-To publish a prebuilt (so consumers skip the ~10min build):
-    cd build/output && zip -ry GDALKit.xcframework.zip GDALKit.xcframework && cd -
-    swift package compute-checksum build/output/GDALKit.xcframework.zip
-    gh release create gdalkit-3.12.4 build/output/GDALKit.xcframework.zip \
-        --repo sirleech/GDALKit --title "GDALKit (GDAL 3.12.4)"
-    # then point Package.swift's CGDAL binaryTarget at the release url:+checksum:
+To publish this build as a GitHub release:  ./release-gdalkit.sh   (see scripts/README.md)
 ```
 
 …and produces:

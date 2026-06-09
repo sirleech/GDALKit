@@ -246,9 +246,4 @@ echo "    import GDALKit     // GDALEnvironment, GDALRaster, CoordinateProjector
 echo "    import CGDAL       // raw GDAL/PROJ C API, if needed"
 echo "-lc++ is applied via Package.swift linkerSettings; no bridging header needed."
 echo
-echo "To publish a prebuilt (so consumers skip the ~10min build):"
-echo "    cd build/output && zip -ry GDALKit.xcframework.zip GDALKit.xcframework && cd -"
-echo "    swift package compute-checksum build/output/GDALKit.xcframework.zip"
-echo "    gh release create $PREBUILT_TAG build/output/GDALKit.xcframework.zip \\"
-echo "        --repo $PREBUILT_REPO --title \"GDALKit (GDAL $GDAL_VERSION)\""
-echo "    # then point Package.swift's CGDAL binaryTarget at the release url:+checksum:"
+echo "To publish this build as a GitHub release:  ./release-gdalkit.sh   (see scripts/README.md)"
