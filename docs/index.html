@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GDALKit — geospatial-ios-swift-kit API</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --fg: #e6e9ef; --muted: #9aa3b2;
+    --accent: #5db0ff; --kw: #c792ea; --type: #82d4a0; --code-bg: #11141a;
+    --border: #232936;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #ffffff; --panel: #f6f8fa; --fg: #1f2328; --muted: #636c76;
+      --accent: #0969da; --kw: #8250df; --type: #1a7f37; --code-bg: #f6f8fa;
+      --border: #d0d7de;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 2.5rem 1.25rem 5rem; }
+  header h1 { font-size: 2rem; margin: 0 0 .25rem; }
+  header p.sub { color: var(--muted); margin: 0 0 1.5rem; }
+  .badges { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 2rem; }
+  .badge {
+    font-size: .8rem; color: var(--muted); background: var(--panel);
+    border: 1px solid var(--border); border-radius: 999px; padding: .15rem .7rem;
+  }
+  nav.toc {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 1rem 1.25rem; margin-bottom: 2.5rem;
+  }
+  nav.toc strong { display:block; font-size:.8rem; text-transform:uppercase;
+    letter-spacing:.05em; color:var(--muted); margin-bottom:.5rem; }
+  nav.toc a { color: var(--accent); text-decoration: none; margin-right: 1rem; white-space: nowrap; }
+  nav.toc a:hover { text-decoration: underline; }
+  section { margin-bottom: 3rem; }
+  h2 { font-size: 1.4rem; border-bottom: 1px solid var(--border); padding-bottom: .35rem; }
+  h3.symbol { font-size: 1.1rem; margin: 1.75rem 0 .35rem; }
+  h3.symbol code { font-size: 1rem; }
+  .kind {
+    font-size: .7rem; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--bg); background: var(--type); border-radius: 4px;
+    padding: .1rem .4rem; vertical-align: middle; margin-right: .5rem;
+  }
+  .kind.enum { background: var(--kw); }
+  .kind.struct { background: var(--accent); }
+  p.note { color: var(--muted); }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 1rem; overflow-x: auto; font-size: .9rem;
+  }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  pre code { color: var(--fg); }
+  .kw { color: var(--kw); } .ty { color: var(--type); } .cm { color: var(--muted); }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+  th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--border); padding-top: 1.5rem; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>GDALKit</h1>
+  <p class="sub">GDAL + PROJ for iOS — a MapKit-free Swift wrapper around a prebuilt static xcframework. Part of <a href="https://github.com/sirleech/geospatial-ios-swift-kit">geospatial-ios-swift-kit</a>.</p>
+  <div class="badges">
+    <span class="badge">iOS 15+</span>
+    <span class="badge">Swift 5.9</span>
+    <span class="badge">GDAL 3.12.4</span>
+    <span class="badge">PROJ 9.6.2</span>
+    <span class="badge">SQLite 3.50.4</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <strong>Contents</strong>
+  <a href="#overview">Overview</a>
+  <a href="#environment">GDALEnvironment</a>
+  <a href="#raster">GDALRaster</a>
+  <a href="#bounds">MercatorBounds</a>
+  <a href="#projector">CoordinateProjector</a>
+  <a href="#cgdal">CGDAL</a>
+</nav>
+
+<section id="overview">
+  <h2>Overview</h2>
+  <p>Two modules ship in this package:</p>
+  <table>
+    <tr><th>Import</th><th>Purpose</th></tr>
+    <tr><td><code>GDALKit</code></td><td>The Swift API documented here: <code>GDALEnvironment</code>, <code>GDALRaster</code>, <code>CoordinateProjector</code>.</td></tr>
+    <tr><td><code>CGDAL</code></td><td>The raw GDAL/PROJ/SQLite C API, exposed from the xcframework via a <code>module.modulemap</code>. Import only for direct C access.</td></tr>
+  </table>
+  <p class="note">The wrapper is deliberately MapKit-free: geometry is expressed in Web Mercator (EPSG:3857) metres via <code>MercatorBounds</code>. Consuming apps map those to MapKit themselves.</p>
+  <pre><code><span class="kw">import</span> GDALKit
+
+GDALEnvironment.bootstrap()                       <span class="cm">// once, at launch</span>
+<span class="kw">let</span> raster = <span class="kw">await</span> GDALRaster.load(from: url)   <span class="cm">// warp to 3857 off-main-thread</span></code></pre>
+</section>
+
+<section id="environment">
+  <h2><span class="kind enum">enum</span>GDALEnvironment</h2>
+  <p>One-time process setup for GDAL + PROJ. Call once before any other GDALKit API.</p>
+
+  <h3 class="symbol"><code><span class="kw">static func</span> bootstrap()</code></h3>
+  <p>Registers GDAL drivers and points PROJ/GDAL at the bundled <code>proj.db</code> + gdal data (resolved from <code>Bundle.module</code>). Idempotent and thread-safe. <strong>Mandatory</strong> — without it, datum/CRS transforms fail silently.</p>
+
+  <h3 class="symbol"><code><span class="kw">static func</span> shareDirectory() -> <span class="ty">URL</span>?</code></h3>
+  <p>Locates the bundled <code>share/</code> directory (containing <code>proj/proj.db</code> and <code>gdal/…</code>). Rarely needed directly.</p>
+</section>
+
+<section id="raster">
+  <h2><span class="kind">class</span>GDALRaster</h2>
+  <p>Wraps one georeferenced raster. On load it warps the source to EPSG:3857 once (tiled + overviewed temp GeoTIFF); subsequent reads are cheap axis-aligned windowed <code>RasterIO</code> reads. Reads are served from a thread-safe pool of dataset handles.</p>
+
+  <h3 class="symbol"><code><span class="kw">static func</span> load(from sourceURL: <span class="ty">URL</span>) <span class="kw">async</span> -> <span class="ty">GDALRaster</span>?</code></h3>
+  <p>Loads + warps on a background queue. Returns <code>nil</code> if the source can't be opened/warped. Accepts GeoTIFF (and any GDAL-readable georeferenced raster). Run <code>bootstrap()</code> first.</p>
+
+  <h3 class="symbol"><code><span class="kw">let</span> bounds: <span class="ty">MercatorBounds</span></code></h3>
+  <p>Web-Mercator footprint of the warped raster, in metres.</p>
+
+  <h3 class="symbol"><code><span class="kw">func</span> readImage(minX:maxX:minY:maxY:outW:outH:) -> (image: <span class="ty">CGImage</span>, bounds: <span class="ty">MercatorBounds</span>)?</code></h3>
+  <p>Renders an arbitrary Web-Mercator window (metres) into an <code>outW</code>×<code>outH</code> RGBA <code>CGImage</code>. Returns the <strong>exact</strong> covered extent — the request snapped out to whole source pixels. Draw the image at the returned <code>bounds</code>, not the requested rect, so content registers precisely (see issue #16). Returns <code>nil</code> if fully outside the footprint.</p>
+  <pre><code><span class="kw">if let</span> t = raster.readImage(minX: x0, maxX: x1, minY: y0, maxY: y1, outW: <span class="ty">768</span>, outH: <span class="ty">768</span>) {
+    <span class="cm">// t.image : CGImage    t.bounds : MercatorBounds (place the image here)</span>
+}</code></pre>
+
+  <h3 class="symbol"><code><span class="kw">func</span> readTilePNG(x: <span class="ty">Int</span>, y: <span class="ty">Int</span>, z: <span class="ty">Int</span>) -> <span class="ty">Data</span>?</code></h3>
+  <p>Renders one 256×256 PNG tile for the standard XYZ/Web-Mercator tile scheme.</p>
+
+  <h3 class="symbol"><code><span class="kw">static let</span> mercatorMax: <span class="ty">Double</span></code></h3>
+  <p>Half the world width in EPSG:3857 metres (<code>20037508.342789244</code>); the ± extent of Web Mercator in both axes.</p>
+</section>
+
+<section id="bounds">
+  <h2><span class="kind struct">struct</span>MercatorBounds</h2>
+  <p>An axis-aligned rectangle in EPSG:3857 (Web Mercator) metres. <code>Equatable</code>, <code>Sendable</code>.</p>
+  <pre><code><span class="kw">struct</span> <span class="ty">MercatorBounds</span> {
+    <span class="kw">var</span> minX: <span class="ty">Double</span>; <span class="kw">var</span> minY: <span class="ty">Double</span>
+    <span class="kw">var</span> maxX: <span class="ty">Double</span>; <span class="kw">var</span> maxY: <span class="ty">Double</span>
+}</code></pre>
+  <p class="note">Convert to MapKit in the app, e.g. via the linear MKMapPoint↔EPSG:3857 relationship.</p>
+</section>
+
+<section id="projector">
+  <h2><span class="kind">class</span>CoordinateProjector</h2>
+  <p>Transforms coordinates between two CRSs identified by EPSG code, over PROJ. Coordinates use traditional GIS axis order: <code>(x, y)</code> = <code>(longitude/easting, latitude/northing)</code>.</p>
+  <p class="note">Not thread-safe — create one per thread or serialise access. Requires <code>bootstrap()</code> first.</p>
+
+  <h3 class="symbol"><code><span class="kw">init</span>?(fromEPSG: <span class="ty">Int32</span>, toEPSG: <span class="ty">Int32</span>)</code></h3>
+  <p>Builds the transform. Returns <code>nil</code> if a CRS can't be constructed (usually a missing <code>proj.db</code>).</p>
+
+  <h3 class="symbol"><code><span class="kw">func</span> project(x: <span class="ty">Double</span>, y: <span class="ty">Double</span>) -> (x: <span class="ty">Double</span>, y: <span class="ty">Double</span>)?</code></h3>
+  <p>Projects a single point from source to destination CRS. <code>nil</code> if untransformable.</p>
+
+  <h3 class="symbol"><code><span class="kw">func</span> project(xs: <span class="kw">inout</span> [<span class="ty">Double</span>], ys: <span class="kw">inout</span> [<span class="ty">Double</span>]) -> <span class="ty">Bool</span></code></h3>
+  <p>Bulk in-place transform of parallel coordinate arrays. Returns whether every point transformed.</p>
+  <pre><code><span class="kw">let</span> p = <span class="ty">CoordinateProjector</span>(fromEPSG: <span class="ty">4326</span>, toEPSG: <span class="ty">3857</span>)
+<span class="kw">let</span> merc = p?.project(x: <span class="ty">151.2093</span>, y: -<span class="ty">33.8688</span>)   <span class="cm">// Sydney → ~(16_832_500, -4_011_500)</span></code></pre>
+</section>
+
+<section id="cgdal">
+  <h2><span class="kind enum">module</span>CGDAL</h2>
+  <p>The raw GDAL/PROJ/SQLite C API. Exposes <code>gdal.h</code>, <code>cpl_*.h</code>, <code>gdal_utils.h</code>, <code>gdalwarper.h</code>, and <code>ogr_srs_api.h</code> as the module <code>CGDAL</code> (a bridging header can't cross a package boundary). Import it only when you need GDAL/OGR/PROJ functions the <code>GDALKit</code> wrapper doesn't surface.</p>
+  <pre><code><span class="kw">import</span> CGDAL
+GDALAllRegister()
+<span class="kw">let</span> ds = GDALOpen(path, GA_ReadOnly)</code></pre>
+</section>
+
+<footer>
+  Hand-written API reference. GDAL, PROJ, SQLite and the bundled proj.db/gdal data
+  retain their own upstream licenses.
+</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,20 @@
+# Build artefacts — the ~100 MB xcframework and intermediate build trees are NOT
+# committed. The xcframework is produced by scripts/build-gdal-ios.sh and
+# published as a version-matched GitHub Release asset instead.
+build/
+.build/
+*.xcframework
+*.xcframework.zip
+
+# SwiftPM / Xcode
+.swiftpm/
+Package.resolved
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# macOS
+.DS_Store
+
+# NOTE: Sources/GDALKit/Resources/share (proj.db + gdal data) IS committed — it is
+# a required runtime resource and consumers cannot run a GDAL build to regenerate it.
