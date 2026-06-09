@@ -94,27 +94,27 @@ ls build/output/share/proj/proj.db                        # exists (~9 MB)
 
 ```bash
 cd scripts
-./release-gdalkit.sh
+./release-gdalkit.sh            # or: ./release-gdalkit.sh 0.2.0   (explicit semver)
 ```
 
-It:
+End to end, it:
 1. zips `build/output/GDALKit.xcframework` → `GDALKit.xcframework.zip`,
 2. computes the SwiftPM checksum,
 3. creates the release `gdalkit-<GDAL_VERSION>` (or updates its asset with
-   `--clobber` if it already exists), and
-4. rewrites `Package.swift`'s `CGDAL` `binaryTarget` `url` + `checksum`.
+   `--clobber` if it already exists),
+4. rewrites `Package.swift`'s `CGDAL` `binaryTarget` `url` + `checksum`, and
+5. commits `Package.swift`, tags the SwiftPM semver (next patch unless you pass
+   one), and pushes the branch + tag.
 
-The tag/version are read from `build-gdal-ios.sh`, so the release always matches
-the binary you built. Then commit and bump the SwiftPM semver tag:
-
-```bash
-git add Package.swift && git commit -m "Release gdalkit-<GDAL_VERSION>"
-git tag 0.1.2 && git push origin main --tags
-```
+The binary tag/version are read from `build-gdal-ios.sh`, so the release always
+matches the binary you built.
 
 > Binary tag vs SwiftPM tag: the xcframework asset is hosted under
 > `gdalkit-<GDAL_VERSION>` (e.g. `gdalkit-3.12.4`); consumers depend on the semver
-> tags (`0.1.x`). Bump the semver tag whenever `Package.swift` changes.
+> tags (`0.1.x`). Each run bumps the semver tag because `Package.swift`'s checksum
+> changes. **Re-releasing the same `gdalkit-<GDAL_VERSION>` binary tag replaces the
+> asset, so any *older* semver tag that referenced the previous build now has a
+> stale checksum** — point consumers at the newest semver tag.
 
 ### Manual fallback
 
@@ -125,7 +125,9 @@ cd build/output && zip -ry GDALKit.xcframework.zip GDALKit.xcframework && cd -
 swift package compute-checksum build/output/GDALKit.xcframework.zip
 gh release create gdalkit-<ver> build/output/GDALKit.xcframework.zip \
   --repo sirleech/GDALKit --title "GDALKit (GDAL <ver>)" --notes "…"
-# then set Package.swift's CGDAL url + checksum to match
+# set Package.swift's CGDAL url + checksum to match, then:
+git add Package.swift && git commit -m "Release gdalkit-<ver>"
+git tag <semver> && git push origin main --tags
 ```
 
 ---

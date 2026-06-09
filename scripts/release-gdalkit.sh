@@ -18,7 +18,8 @@
 # and a Swift toolchain. The version + tag are read from build-gdal-ios.sh so the
 # release always matches the binary you built.
 #
-# USAGE:  ./release-gdalkit.sh
+# USAGE:  ./release-gdalkit.sh [semver]
+#   semver defaults to bumping the patch of the latest x.y.z tag (e.g. 0.1.1 -> 0.1.2).
 # =============================================================================
 set -euo pipefail
 
@@ -80,11 +81,32 @@ if [ -f "$PKG" ]; then
   echo "==> updated Package.swift CGDAL → ${URL}"
 fi
 
+# ---- 5. commit Package.swift, tag the SwiftPM semver, and push --------------
+# Semver: first arg if given, else bump the patch of the latest x.y.z tag.
+SEMVER="${1:-}"
+if [ -z "$SEMVER" ]; then
+  LATEST="$(git -C "$ROOT" tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)"
+  if [ -n "$LATEST" ]; then
+    IFS=. read -r MA MI PA <<<"$LATEST"
+    SEMVER="${MA}.${MI}.$((PA + 1))"
+  else
+    SEMVER="0.1.0"
+  fi
+fi
+git -C "$ROOT" rev-parse "$SEMVER" >/dev/null 2>&1 && \
+  { echo "error: tag ${SEMVER} already exists — pass a new one: ./release-gdalkit.sh <semver>"; exit 1; }
+
+BRANCH="$(git -C "$ROOT" rev-parse --abbrev-ref HEAD)"
+echo "==> committing Package.swift + tagging ${SEMVER} on ${BRANCH}"
+git -C "$ROOT" add Package.swift
+git -C "$ROOT" commit -m "Release ${TAG} (SwiftPM ${SEMVER})" || echo "    (Package.swift unchanged — nothing to commit)"
+git -C "$ROOT" tag -a "$SEMVER" -m "GDALKit ${SEMVER} — ${TAG}"
+git -C "$ROOT" push origin "$BRANCH"
+git -C "$ROOT" push origin "$SEMVER"
+
 cat <<EOF
 
-DONE.  Release: https://github.com/${REPO}/releases/tag/${TAG}
-
-Next:
-  git add Package.swift && git commit -m "Release ${TAG}"
-  git tag <semver> && git push origin main --tags      # bump the SwiftPM tag, e.g. 0.1.2
+DONE.
+  Release : https://github.com/${REPO}/releases/tag/${TAG}
+  SwiftPM : ${SEMVER}   (consumers: .package(url: "https://github.com/${REPO}.git", from: "${SEMVER}"))
 EOF
