@@ -7,12 +7,14 @@ runtime data (`proj.db` + gdal data) bundled as a package resource.
 Extracted from [GeoMapViewer](https://github.com/sirleech/GeoMapViewer) so it can
 be shared across apps (GeoMapViewer, WaypointGo, …).
 
-## Modules
+## Products / modules
 
-| `import`   | What it is |
-|------------|------------|
-| `GDALKit`  | Swift wrapper apps use: `GDALEnvironment`, `GDALRaster`, `CoordinateProjector`. |
-| `CGDAL`    | The raw GDAL/PROJ/SQLite C API, exposed from the xcframework via a `module.modulemap`. Import only if you need the C API directly. |
+Two library products:
+
+| product / `import` | What it is |
+|--------------------|------------|
+| `GDALKit`  | Swift wrapper apps use: `GDALEnvironment`, `GDALRaster`, `MercatorBounds`, `CoordinateProjector`. |
+| `CGDAL`    | The raw GDAL/PROJ/SQLite C API, exposed from the xcframework via a `module.modulemap`. Add it only if you call the C API directly (e.g. an app's own GeoPDF importer). |
 
 A bridging header can't cross a Swift-package boundary, so `CGDAL` replaces the
 old `GDAL-Bridging-Header.h`.
@@ -44,7 +46,9 @@ let merc = p?.project(x: 151.2093, y: -33.8688)   // (x: lon, y: lat) → metres
 
 ```swift
 // Package.swift
-.package(url: "https://github.com/sirleech/GDALKit.git", from: "0.1.0")
+.package(url: "https://github.com/sirleech/GDALKit.git", from: "0.1.1")
+// target deps: .product(name: "GDALKit", package: "GDALKit")
+//              .product(name: "CGDAL",   package: "GDALKit")   // only if you use the C API
 ```
 
 XcodeGen (`project.yml`):
@@ -53,12 +57,15 @@ XcodeGen (`project.yml`):
 packages:
   GDALKit:
     url: https://github.com/sirleech/GDALKit.git
-    from: 0.1.0
+    from: "0.1.1"
     # local dev:  path: ../GDALKit
 targets:
   YourApp:
     dependencies:
       - package: GDALKit
+        product: GDALKit
+      - package: GDALKit
+        product: CGDAL       # only if you call the C API directly
 ```
 
 No `-lc++` and no bundled `proj.db` in the app — the package owns both
@@ -81,7 +88,8 @@ run a GDAL build). See [CLAUDE.md](CLAUDE.md).
 ## Versions
 
 GDAL 3.12.4 · PROJ 9.6.2 · SQLite 3.50.4 (internal libtiff/geotiff/jpeg/png/zlib).
-Package version tracks GDAL via a `gdalkit-<GDAL_VERSION>` release tag.
+The prebuilt xcframework is published under a `gdalkit-<GDAL_VERSION>` binary tag
+(`gdalkit-3.12.4`); SwiftPM consumers use the semver tags (`0.1.x`).
 
 ## Docs
 

@@ -8,7 +8,7 @@ Extracted from GeoMapViewer; consumed by GeoMapViewer/WaypointGo as a package.
 ## Layout
 
 ```
-Package.swift                       binaryTarget CGDAL + wrapper target GDALKit + tests
+Package.swift                       binaryTarget CGDAL + GDALKit wrapper; vends GDALKit + CGDAL products
 scripts/build-gdal-ios.sh           builds the xcframework, writes the CGDAL modulemap,
                                     syncs share/ into the package resources
 Sources/GDALKit/
@@ -28,6 +28,8 @@ build/output/                       gitignored: GDALKit.xcframework + share + bu
   package boundary, so the build script writes a `module.modulemap` into each
   xcframework slice's `Headers/` (module `CGDAL`, listing gdal.h, cpl_*.h,
   gdal_utils.h, gdalwarper.h, ogr_srs_api.h). Package Swift files `import CGDAL`.
+  It's also vended as its own **library product**, so consuming apps that touch the
+  C API directly (e.g. GeoMapViewer's GeoPDF importer) can `import CGDAL` too.
 - **`GDALKit`** = the Swift wrapper apps `import`. It owns `-lc++`
   (`linkerSettings`, propagates to consumers) and ships `proj.db` as a resource.
 
@@ -103,10 +105,12 @@ under `Sources/GDALKit/Resources/share`). The first release is published:
 10. **SQLite amalgamation URL** encodes version + year — verify on sqlite.org when
     bumping. **Datum accuracy** ~1–2 m without NTv2 grids (fine for hiking).
 
-## Verifying (next step — not yet done)
+## Verifying (done — re-run after changes)
 
-iOS-only xcframework can't be `swift build`-ed on the macOS host. Verify by
-building the package for the simulator and running the smoke test:
+Verified on the iOS simulator + iPhone 15 Pro, and consumed by GeoMapViewer
+(GeoTIFF + GeoPDF maps warp and register correctly). An iOS-only xcframework
+can't be `swift build`-ed on the macOS host — verify by building the package for
+the simulator and running the tests:
 
 ```bash
 xcodebuild -scheme GDALKit -sdk iphonesimulator \

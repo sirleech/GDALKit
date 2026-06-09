@@ -21,6 +21,9 @@ let package = Package(
     platforms: [.iOS(.v15)],
     products: [
         .library(name: "GDALKit", targets: ["GDALKit"]),
+        // Exposes the raw GDAL/PROJ/SQLite C API so consumers that need it directly
+        // (e.g. an app's own GeoPDF importer) can `import CGDAL`.
+        .library(name: "CGDAL", targets: ["CGDAL"]),
     ],
     targets: [
         // --- C API (the prebuilt static xcframework) ----------------------------
