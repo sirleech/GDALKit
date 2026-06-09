@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 import CGDAL
 @testable import GDALKit
 
@@ -84,6 +85,24 @@ final class GDALKitTests: XCTestCase {
         XCTAssertEqual(tile.image.height, 256)
         XCTAssertLessThanOrEqual(tile.bounds.minX, b.minX)   // covered ⊇ requested
         XCTAssertGreaterThanOrEqual(tile.bounds.maxX, b.maxX)
+
+        // Render the full warped footprint (aspect-correct) and attach it to the
+        // test report so the reprojected raster is visually inspectable — in
+        // EPSG:3857 it's slightly rotated/sheared with transparent nodata corners
+        // (the UTM→Web-Mercator reprojection signature), vs the axis-aligned source.
+        let aspect = (b.maxY - b.minY) / (b.maxX - b.minX)
+        let outW = 512
+        let outH = max(1, Int((Double(outW) * aspect).rounded()))
+        let full = try XCTUnwrap(
+            raster.readImage(minX: b.minX, maxX: b.maxX, minY: b.minY, maxY: b.maxY,
+                             outW: outW, outH: outH),
+            "readImage returned nil for the full-footprint render.")
+        let png = try XCTUnwrap(UIImage(cgImage: full.image).pngData(),
+                                "Could not PNG-encode the warped image.")
+        let attachment = XCTAttachment(data: png, uniformTypeIdentifier: "public.png")
+        attachment.name = "warped-RGB.byte-EPSG3857.png"
+        attachment.lifetime = .keepAlways   // keep even though the test passes
+        add(attachment)
     }
 
     /// USGS US Topo GeoPDF, loaded by **URL at test time** (not committed — ~33 MB).
