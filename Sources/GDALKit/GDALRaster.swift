@@ -41,6 +41,9 @@ public final class GDALRaster {
 
     // MARK: Private
     private let warpedPath: String
+    /// Whether `deinit` deletes `warpedPath`. True for a temp warp (we made it); false for
+    /// a persistent cache the app owns (`cacheTo:` / `open(warped:)`).
+    private let ownsWarpedFile: Bool
     private var gt = [Double](repeating: 0, count: 6)         // geotransform of the warped raster
     private var rasterW = 0
     private var rasterH = 0
@@ -49,35 +52,53 @@ public final class GDALRaster {
 
     // MARK: - Loading (run off the main thread; the warp is heavy)
 
-    /// Loads and warps a georeferenced raster to Web Mercator on a background
-    /// queue. Returns nil if the source can't be opened/warped. Call
-    /// `GDALEnvironment.bootstrap()` once before the first load.
+    /// Loads a georeferenced raster, warping it to Web Mercator on a background queue.
+    /// Returns nil if the source can't be opened/warped. Call `GDALEnvironment.bootstrap()`
+    /// once before the first load.
+    ///
+    /// Pass `cacheTo` to warp straight into a persistent file the **caller owns** — it is
+    /// not deleted when the raster is released, so the app can reopen it later with
+    /// `open(warped:)` and skip the warp entirely. With `cacheTo == nil` the warped file
+    /// lives in the temp dir and is deleted on `deinit` (the original behaviour).
     ///
     /// `onProgress` reports the current `WarpPhase` and that phase's own 0…1 fraction,
     /// so the caller can label the step and weight the phases into one bar. It is
     /// invoked **synchronously on the background load thread** and can fire
     /// **frequently**, so throttle and hop to the main actor yourself before driving UI.
     public static func load(from sourceURL: URL,
+                            cacheTo: URL? = nil,
                             onProgress: (@Sendable (WarpPhase, Double) -> Void)? = nil) async -> GDALRaster? {
         await withCheckedContinuation { cont in
             DispatchQueue.global(qos: .userInitiated).async {
-                cont.resume(returning: GDALRaster(sourceURL: sourceURL, onProgress: onProgress))
+                cont.resume(returning: makeByWarping(sourceURL: sourceURL, cacheTo: cacheTo, onProgress: onProgress))
             }
         }
     }
 
-    private init?(sourceURL: URL, onProgress: (@Sendable (WarpPhase, Double) -> Void)? = nil) {
+    /// Opens an already-warped EPSG:3857 GeoTIFF (one produced earlier via `cacheTo`)
+    /// directly — no copy, render, or warp — for an instant, offline reload. The file is
+    /// the caller's and is never deleted by the raster. Returns nil if it isn't a usable
+    /// warped raster.
+    public static func open(warped url: URL) async -> GDALRaster? {
+        await withCheckedContinuation { cont in
+            DispatchQueue.global(qos: .userInitiated).async {
+                cont.resume(returning: GDALRaster(openingWarped: url.path, owns: false))
+            }
+        }
+    }
+
+    /// Steps 1–3: copy the source into the sandbox, warp it to EPSG:3857, build overviews
+    /// — into `cacheTo` (caller-owned) or a temp file (raster-owned) — then open it.
+    private static func makeByWarping(sourceURL: URL, cacheTo: URL?,
+                                      onProgress: (@Sendable (WarpPhase, Double) -> Void)?) -> GDALRaster? {
         // 1. Copy the picked file into our sandbox while we hold security-scoped access.
         let scoped = sourceURL.startAccessingSecurityScopedResource()
         defer { if scoped { sourceURL.stopAccessingSecurityScopedResource() } }
 
         let tmp = FileManager.default.temporaryDirectory
         let srcCopy = tmp.appendingPathComponent("src-\(UUID().uuidString).tif")
-        do {
-            try FileManager.default.copyItem(at: sourceURL, to: srcCopy)
-        } catch {
-            return nil
-        }
+        do { try FileManager.default.copyItem(at: sourceURL, to: srcCopy) }
+        catch { return nil }
         defer { try? FileManager.default.removeItem(at: srcCopy) }
 
         // Report which phase + that phase's own 0…1 to the caller (it weights/labels
@@ -85,33 +106,42 @@ public final class GDALRaster {
         let progress = onProgress.map(WarpProgress.init)
 
         // 2. Warp source -> EPSG:3857 tiled GeoTIFF (+ alpha band for clean transparent edges).
-        let dst = tmp.appendingPathComponent("warp-\(UUID().uuidString).tif")
+        //    Into the caller's cache path if given, else a temp file we own.
+        let dst = cacheTo ?? tmp.appendingPathComponent("warp-\(UUID().uuidString).tif")
         progress?.phase = .reprojecting
-        guard GDALRaster.warpToWebMercator(src: srcCopy.path, dst: dst.path, progress: progress) else {
+        guard warpToWebMercator(src: srcCopy.path, dst: dst.path, progress: progress) else {
             try? FileManager.default.removeItem(at: dst)
             return nil
         }
-        warpedPath = dst.path
 
         // 3. Build overviews so zoomed-out reads are fast and smooth.
         progress?.phase = .buildingOverviews
-        GDALRaster.buildOverviews(path: dst.path, progress: progress)
+        buildOverviews(path: dst.path, progress: progress)
 
-        // 4. Read geo metadata from the warped raster.
-        guard let ds = GDALOpen(dst.path, GA_ReadOnly) else {
-            try? FileManager.default.removeItem(at: dst)
+        // 4–6 in the shared opener. The caller owns `cacheTo`; a temp warp is ours to delete.
+        guard let raster = GDALRaster(openingWarped: dst.path, owns: cacheTo == nil) else {
+            try? FileManager.default.removeItem(at: dst)   // bad warp output — don't leave garbage
             return nil
         }
+        return raster
+    }
+
+    /// Steps 4–6: open an EPSG:3857 warped GeoTIFF, read its geo metadata, and stand up the
+    /// read-handle pool. `owns` decides whether `deinit` deletes the file (a temp warp) or
+    /// leaves it (a persistent cache the app owns).
+    private init?(openingWarped path: String, owns: Bool) {
+        ownsWarpedFile = owns
+        warpedPath = path
+
+        // 4. Read geo metadata from the warped raster.
+        guard let ds = GDALOpen(path, GA_ReadOnly) else { return nil }
         GDALGetGeoTransform(ds, &gt)
         rasterW = Int(GDALGetRasterXSize(ds))
         rasterH = Int(GDALGetRasterYSize(ds))
         bandCount = Int(GDALGetRasterCount(ds))
         GDALClose(ds)
 
-        guard rasterW > 0, rasterH > 0, gt[1] != 0, gt[5] != 0, bandCount >= 1 else {
-            try? FileManager.default.removeItem(at: dst)
-            return nil
-        }
+        guard rasterW > 0, rasterH > 0, gt[1] != 0, gt[5] != 0, bandCount >= 1 else { return nil }
 
         // 5. Footprint in Web-Mercator metres (gt[5] is negative → north is gt[3]).
         bounds = MercatorBounds(
@@ -120,15 +150,15 @@ public final class GDALRaster {
             maxX: gt[0] + Double(rasterW) * gt[1],
             maxY: gt[3])
 
-        // 6. Pool of read handles for parallel windowed reads (GDAL datasets are
-        //    NOT thread-safe). More handles fill a freshly-zoomed screen faster.
+        // 6. Pool of read handles for parallel windowed reads (GDAL datasets are NOT
+        //    thread-safe). More handles fill a freshly-zoomed screen faster.
         let n = max(2, min(8, ProcessInfo.processInfo.activeProcessorCount))
-        pool = DatasetPool(path: dst.path, size: n)
+        pool = DatasetPool(path: path, size: n)
     }
 
     deinit {
         pool.closeAll()
-        try? FileManager.default.removeItem(atPath: warpedPath)
+        if ownsWarpedFile { try? FileManager.default.removeItem(atPath: warpedPath) }
     }
 
     // MARK: - Reading pixels
