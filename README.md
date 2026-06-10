@@ -31,13 +31,17 @@ GDALEnvironment.bootstrap()
 // onProgress reports the current WarpPhase (.reprojecting / .buildingOverviews) and
 // that phase's own 0…1 fraction — for a load progress bar. It fires frequently on the
 // background load thread, so throttle and hop to the main actor before driving UI.
-if let raster = await GDALRaster.load(from: url, onProgress: { phase, fraction in
+if let raster = await GDALRaster.load(from: url, cacheTo: cacheURL, onProgress: { phase, fraction in
     // e.g. weight the phases into one bar and update it on @MainActor
 }) {
     // raster.bounds : MercatorBounds (EPSG:3857 metres) — map this to MapKit in the app.
     let tile = raster.readImage(minX: …, maxX: …, minY: …, maxY: …, outW: 768, outH: 768)
     // tile?.image  : CGImage      tile?.bounds : exact covered MercatorBounds
 }
+
+// `cacheTo` warped straight into a persistent file you own. Reopen it later for free —
+// no copy/render/warp — for an instant, offline reload:
+let cached = await GDALRaster.open(warped: cacheURL)
 
 // Transform coordinates between EPSG CRSs.
 let p = CoordinateProjector(fromEPSG: 4326, toEPSG: 3857)
