@@ -32,14 +32,16 @@
       "significance": "GeoPDF whose LPTS `ly` is measured from the TOP of the page; the importer assumed bottom-origin, so the GCP latitude axis was inverted and the map warped UPSIDE-DOWN (collar text reversed). Fixed by enforcing north-up from the GCPs (mirror the line axis when latitude rises with pixel-line). Also exercises the app-side CoreGraphics GeoPDF import path (the iOS GDAL build has no PDF driver). Browse more US Topo quads via https://apps.nationalmap.gov/downloader/ (dataset 'US Topo')."
     },
     {
-      "name": "ga-hall-act-8727-4",
-      "description": "Geoscience Australia 1:25 000 topographic map 'Hall' (ACT), scanned RGB GeoTIFF (Adobe Photoshop, 400 DPI), 8152x11180, ~261 MB uncompressed.",
-      "url": "https://d28rz98at9flks.cloudfront.net/57904/8727_4_Hall.tif",
-      "format": "GeoTIFF (scanned, 3-band RGB)",
-      "crs": "NONE embedded — georeferenced via a sidecar world file (.tfw) + projection; the Hall sheet is GDA94 / MGA zone 55",
-      "approxSizeMB": 261,
-      "relatedIssue": "GeoMapViewer#15, #16",
-      "significance": "Two edge cases. (1) The .tif carries NO embedded geotransform/CRS — its corners are raw pixels (0..8152) — because GA ships the georeferencing in sidecar files. GDALKit copies only the single picked file, so this will NOT georeference on its own (documents the sidecar / world-file gap). (2) Large uncompressed RGB (~261 MB) → a memory/throughput stress case for warp-on-load (GDAL_CACHEMAX cap). The 'Hall' map from the slow-render (#15) and tile-alignment (#16) discussions; once georeferenced it's a GDA94/MGA-zone-55 datum reprojection."
+      "name": "nsw-hall-8727-4s",
+      "description": "NSW 1:25 000 topographic map 'Hall' (sheet 8727-4S), 2022 edition, collar-on Geospatial PDF, 3248x1672, GDA2020 / MGA zone 55.",
+      "url": "https://portal.spatial.nsw.gov.au/download/NSWTopographicMaps/DTDB_GeoReferenced_Raster_CollarOn_161070/2022/25k/8727-4S+HALL.pdf",
+      "format": "GeoPDF (OGC/ISO-32000 geospatial PDF)",
+      "crs": "EPSG:7855 (GDA2020 / MGA zone 55)",
+      "year": 2022,
+      "source": "NSW Government — Spatial Services (portal.spatial.nsw.gov.au); © State of New South Wales",
+      "approxSizeMB": 14,
+      "relatedIssue": "GeoMapViewer#15, #16, #17",
+      "significance": "Properly-georeferenced GeoPDF on the modern GDA2020 datum — exercises the GDA2020 -> EPSG:3857 reproject and the app-side CoreGraphics GeoPDF import path. The 'Hall' sheet from the slow-render (#15) and tile-alignment (#16) discussions. Replaces the legacy Geoscience Australia scan (8727_4_Hall.tif, ~261 MB) which had NO embedded georeferencing (it relied on a sidecar world file). A good Australian-datum companion to the US Topo GeoPDF (#17), with a different LPTS layout to check the north-up orientation logic against."
     },
     {
       "name": "ga-act-region-100k",
