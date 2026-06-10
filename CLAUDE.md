@@ -13,7 +13,7 @@ scripts/build-gdal-ios.sh           builds the xcframework, writes the CGDAL mod
                                     syncs share/ into the package resources
 Sources/GDALKit/
   GDALEnvironment.swift             bootstrap(): proj.db via Bundle.module + GDALAllRegister
-  GDALRaster.swift                  warp-to-3857 + windowed reads + DatasetPool (MapKit-free)
+  GDALRaster.swift                  warp-to-3857 + windowed reads + DatasetPool + load progress (MapKit-free)
   CoordinateProjector.swift         EPSG<->EPSG transform over PROJ (OGR OCT)
   Resources/share/                  proj.db + gdal data — COMMITTED (consumers can't build GDAL)
 Tests/GDALKitTests/                 transform smoke test + bundled-GeoTIFF load/warp test

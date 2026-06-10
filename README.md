@@ -27,8 +27,13 @@ import GDALKit
 // Once, at launch — points PROJ at the bundled proj.db (mandatory for transforms).
 GDALEnvironment.bootstrap()
 
-// Reproject + warp a GeoTIFF to Web Mercator off the main thread.
-if let raster = await GDALRaster.load(from: url) {
+// Reproject + warp a GeoTIFF to Web Mercator off the main thread. The optional
+// onProgress reports the current WarpPhase (.reprojecting / .buildingOverviews) and
+// that phase's own 0…1 fraction — for a load progress bar. It fires frequently on the
+// background load thread, so throttle and hop to the main actor before driving UI.
+if let raster = await GDALRaster.load(from: url, onProgress: { phase, fraction in
+    // e.g. weight the phases into one bar and update it on @MainActor
+}) {
     // raster.bounds : MercatorBounds (EPSG:3857 metres) — map this to MapKit in the app.
     let tile = raster.readImage(minX: …, maxX: …, minY: …, maxY: …, outW: 768, outH: 768)
     // tile?.image  : CGImage      tile?.bounds : exact covered MercatorBounds
