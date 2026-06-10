@@ -1,0 +1,55 @@
+{
+  "_comment": "Large map fixtures for GDALKit, too big to commit to git. Download on demand for manual / opt-in integration testing. Each entry: what the file is (description), where to get it (url), and the GDALKit edge case it exercises (significance) — usually something we had to fix. The small fixtures actually committed in this folder are RGB.byte.tif and paletted.tif.",
+  "fixtures": [
+    {
+      "name": "usgs-drg-c41078a1",
+      "description": "USGS Digital Raster Graphic (DRG) topo quad, scanned/paletted GeoTIFF, 7202x5593, WGS 84 / UTM zone 17N (EPSG:32617).",
+      "url": "https://download.osgeo.org/geotiff/samples/usgs/c41078a1.tif",
+      "format": "GeoTIFF",
+      "crs": "EPSG:32617 (WGS 84 / UTM zone 17N)",
+      "approxSizeMB": 15,
+      "relatedIssue": "GeoMapViewer#19",
+      "significance": "Paletted: one Byte band + a 256-entry RGB colour table. The warp kept the palette band, so the renderer read palette *indices* as grayscale and the map came out BLACK. Fixed by expanding colour-table sources to RGB via an in-memory VRT before warping (GDALKit 0.1.4). The canonical regression file for #19."
+    },
+    {
+      "name": "usgs-drg-o41078a1",
+      "description": "Companion USGS DRG quad to c41078a1, paletted GeoTIFF, 5032x6793, UTM zone 17N.",
+      "url": "https://download.osgeo.org/geotiff/samples/usgs/o41078a1.tif",
+      "format": "GeoTIFF",
+      "crs": "EPSG:32617 (WGS 84 / UTM zone 17N)",
+      "approxSizeMB": 6,
+      "relatedIssue": "GeoMapViewer#19",
+      "significance": "Also paletted (colour table) — same black-render bug as c41078a1, and the second sample in the #19 report. Use it to confirm the palette-expand fix holds across more than one DRG."
+    },
+    {
+      "name": "ustopo-tx-7-l-ranch",
+      "description": "USGS US Topo GeoPDF — '7 L Ranch, TX' 7.5-minute quad (West Texas near Monahans), 3600x4350 page, NAD83 / UTM zone 13N.",
+      "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Maps/USTopo/PDF/TX/TX_7_L_Ranch_20220607_TM_geo.pdf",
+      "format": "GeoPDF (OGC/ISO-32000 geospatial PDF)",
+      "crs": "NAD83 / UTM zone 13N",
+      "approxSizeMB": 33,
+      "relatedIssue": "GeoMapViewer#17",
+      "significance": "GeoPDF whose LPTS `ly` is measured from the TOP of the page; the importer assumed bottom-origin, so the GCP latitude axis was inverted and the map warped UPSIDE-DOWN (collar text reversed). Fixed by enforcing north-up from the GCPs (mirror the line axis when latitude rises with pixel-line). Also exercises the app-side CoreGraphics GeoPDF import path (the iOS GDAL build has no PDF driver). Browse more US Topo quads via https://apps.nationalmap.gov/downloader/ (dataset 'US Topo')."
+    },
+    {
+      "name": "ga-hall-act-8727-4",
+      "description": "Geoscience Australia 1:25 000 topographic map 'Hall' (ACT), scanned RGB GeoTIFF (Adobe Photoshop, 400 DPI), 8152x11180, ~261 MB uncompressed.",
+      "url": "https://d28rz98at9flks.cloudfront.net/57904/8727_4_Hall.tif",
+      "format": "GeoTIFF (scanned, 3-band RGB)",
+      "crs": "NONE embedded — georeferenced via a sidecar world file (.tfw) + projection; the Hall sheet is GDA94 / MGA zone 55",
+      "approxSizeMB": 261,
+      "relatedIssue": "GeoMapViewer#15, #16",
+      "significance": "Two edge cases. (1) The .tif carries NO embedded geotransform/CRS — its corners are raw pixels (0..8152) — because GA ships the georeferencing in sidecar files. GDALKit copies only the single picked file, so this will NOT georeference on its own (documents the sidecar / world-file gap). (2) Large uncompressed RGB (~261 MB) → a memory/throughput stress case for warp-on-load (GDAL_CACHEMAX cap). The 'Hall' map from the slow-render (#15) and tile-alignment (#16) discussions; once georeferenced it's a GDA94/MGA-zone-55 datum reprojection."
+    },
+    {
+      "name": "ga-act-region-100k",
+      "description": "Geoscience Australia ACT 1:100 000 region map, GeoPDF, ~741 MB.",
+      "url": "https://d28rz98at9flks.cloudfront.net/101783/ACT_Region.pdf",
+      "format": "GeoPDF",
+      "crs": "Australian GDA / MGA",
+      "approxSizeMB": 741,
+      "relatedIssue": "GeoMapViewer#3",
+      "significance": "Extreme large-input stress test: a ~741 MB GeoPDF, far over the ~50 MB practical target. Used to scope an upload/size cap (#3) and to check warp-on-load memory behaviour / iOS jetsam against the GDAL_CACHEMAX cap. Likely needs progressive rendering (#15) to be usable."
+    }
+  ]
+}
