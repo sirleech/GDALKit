@@ -134,4 +134,52 @@ final class GDALKitTests: XCTestCase {
             XCTAssertNil(raster, "Expected nil: this build has no GDAL PDF driver.")
         }
     }
+
+    /// Regression for #19: a paletted (colour-table) GeoTIFF must be expanded to RGB
+    /// before warping. Without that its palette *indices* render as gray ≈ black.
+    func testPalettedGeoTIFFExpandsToColour() async throws {
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "paletted", withExtension: "tif", subdirectory: "Fixtures"),
+            "paletted.tif fixture is missing from the test bundle.")
+        let loaded = await GDALRaster.load(from: url)
+        let raster = try XCTUnwrap(loaded, "GDALRaster.load failed for the paletted GeoTIFF.")
+
+        let b = raster.bounds
+        let tile = try XCTUnwrap(
+            raster.readImage(minX: b.minX, maxX: b.maxX, minY: b.minY, maxY: b.maxY,
+                             outW: 128, outH: 128),
+            "readImage returned nil for the paletted fixture.")
+
+        // Before the fix the palette indices rendered (near) black; after it, most
+        // opaque pixels carry real colour.
+        let nonBlack = Self.nonBlackOpaqueFraction(tile.image)
+        XCTAssertGreaterThan(nonBlack, 0.5,
+            "Paletted GeoTIFF rendered mostly black — the palette wasn't expanded (#19).")
+
+        if let png = UIImage(cgImage: tile.image).pngData() {
+            let a = XCTAttachment(data: png, uniformTypeIdentifier: "public.png")
+            a.name = "paletted-expanded-to-colour.png"; a.lifetime = .keepAlways; add(a)
+        }
+    }
+
+    /// Fraction of opaque pixels that are not (near) black — used to tell a real
+    /// colour render from the all-black palette-index bug.
+    private static func nonBlackOpaqueFraction(_ image: CGImage) -> Double {
+        let w = image.width, h = image.height
+        var data = [UInt8](repeating: 0, count: w * h * 4)
+        let cs = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
+                                  bytesPerRow: w * 4, space: cs,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return 0 }
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        var opaque = 0, nonBlack = 0, i = 0
+        while i < data.count {
+            if data[i + 3] > 0 {
+                opaque += 1
+                if data[i] > 16 || data[i + 1] > 16 || data[i + 2] > 16 { nonBlack += 1 }
+            }
+            i += 4
+        }
+        return opaque == 0 ? 0 : Double(nonBlack) / Double(opaque)
+    }
 }

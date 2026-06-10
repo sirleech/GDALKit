@@ -248,6 +248,32 @@ public final class GDALRaster {
         guard let srcDS = GDALOpen(src, GA_ReadOnly) else { return false }
         defer { GDALClose(srcDS) }
 
+        // Paletted (colour-table) sources — e.g. USGS DRG topos — must be expanded to
+        // RGB before warping, or the warp/read sees palette *indices*, not colour, and
+        // the map renders black (#19). Expand on the fly through an in-memory VRT (no
+        // large temp file). Only paletted sources are touched — RGB/gray sources (incl.
+        // GeoPDFs, already rendered to RGB) warp exactly as before; falls back to the
+        // original if expansion fails.
+        var warpSrc: GDALDatasetH? = srcDS
+        var expanded: GDALDatasetH? = nil
+        var expandedVRTPath: String? = nil
+        if hasColorTable(srcDS) {
+            var targv: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>? = nil
+            for a in ["-of", "VRT", "-expand", "rgb"] { targv = CSLAddString(targv, a) }
+            defer { CSLDestroy(targv) }
+            if let topts = GDALTranslateOptionsNew(targv, nil) {
+                defer { GDALTranslateOptionsFree(topts) }
+                let vrtPath = "/vsimem/gdalkit-expand-\(UUID().uuidString).vrt"
+                if let e = GDALTranslate(vrtPath, srcDS, topts, nil) {
+                    expanded = e; warpSrc = e; expandedVRTPath = vrtPath
+                }
+            }
+        }
+        defer {
+            if let e = expanded { GDALClose(e) }
+            if let p = expandedVRTPath { VSIUnlink(p) }
+        }
+
         let argv = [
             "-of", "GTiff",
             "-t_srs", "EPSG:3857",
@@ -266,7 +292,7 @@ public final class GDALRaster {
         guard let opts = GDALWarpAppOptionsNew(cargv, nil) else { return false }
         defer { GDALWarpAppOptionsFree(opts) }
 
-        var srcArr: [GDALDatasetH?] = [srcDS]
+        var srcArr: [GDALDatasetH?] = [warpSrc]
         var usageErr: Int32 = 0
         let out = srcArr.withUnsafeMutableBufferPointer { buf in
             GDALWarp(dst, nil, 1, buf.baseAddress, opts, &usageErr)
@@ -274,6 +300,14 @@ public final class GDALRaster {
         guard let outDS = out else { return false }
         GDALClose(outDS)
         return true
+    }
+
+    /// Whether the source's first band is paletted (has a colour table) — i.e. its
+    /// bytes are palette indices, not colour, and must be expanded before warping.
+    private static func hasColorTable(_ ds: GDALDatasetH) -> Bool {
+        guard GDALGetRasterCount(ds) >= 1, let band = GDALGetRasterBand(ds, 1) else { return false }
+        return GDALGetRasterColorTable(band) != nil
+            || GDALGetRasterColorInterpretation(band) == GCI_PaletteIndex
     }
 
     private static func buildOverviews(path: String) {

@@ -16,3 +16,14 @@ Taken from the rasterio project's test data:
 It is a clip of a USGS Landsat scene. The Landsat imagery is U.S. Geological
 Survey public-domain data; rasterio itself is distributed under the BSD-3-Clause
 license. Included here solely as a test fixture.
+
+
+paletted.tif
+============
+
+A tiny (128×116, 16 KB) **paletted** GeoTIFF (single Byte band + a 256-entry RGB
+colour table), EPSG:32618. Derived from RGB.byte.tif above — downsampled and
+quantised to a palette with GDAL's `rgb2pct.py`. Used to regression-test that
+paletted sources (e.g. USGS DRG topos) are expanded to RGB before warping rather
+than rendering their palette indices as black (#19). Same provenance/license as
+RGB.byte.tif.
