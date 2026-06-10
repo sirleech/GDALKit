@@ -52,15 +52,21 @@ public final class GDALRaster {
     /// Loads and warps a georeferenced raster to Web Mercator on a background
     /// queue. Returns nil if the source can't be opened/warped. Call
     /// `GDALEnvironment.bootstrap()` once before the first load.
-    public static func load(from sourceURL: URL) async -> GDALRaster? {
+    ///
+    /// `onProgress` reports the current `WarpPhase` and that phase's own 0…1 fraction,
+    /// so the caller can label the step and weight the phases into one bar. It is
+    /// invoked **synchronously on the background load thread** and can fire
+    /// **frequently**, so throttle and hop to the main actor yourself before driving UI.
+    public static func load(from sourceURL: URL,
+                            onProgress: (@Sendable (WarpPhase, Double) -> Void)? = nil) async -> GDALRaster? {
         await withCheckedContinuation { cont in
             DispatchQueue.global(qos: .userInitiated).async {
-                cont.resume(returning: GDALRaster(sourceURL: sourceURL))
+                cont.resume(returning: GDALRaster(sourceURL: sourceURL, onProgress: onProgress))
             }
         }
     }
 
-    private init?(sourceURL: URL) {
+    private init?(sourceURL: URL, onProgress: (@Sendable (WarpPhase, Double) -> Void)? = nil) {
         // 1. Copy the picked file into our sandbox while we hold security-scoped access.
         let scoped = sourceURL.startAccessingSecurityScopedResource()
         defer { if scoped { sourceURL.stopAccessingSecurityScopedResource() } }
@@ -74,16 +80,22 @@ public final class GDALRaster {
         }
         defer { try? FileManager.default.removeItem(at: srcCopy) }
 
+        // Report which phase + that phase's own 0…1 to the caller (it weights/labels
+        // them). Stays nil — and every progress call a no-op — without `onProgress`.
+        let progress = onProgress.map(WarpProgress.init)
+
         // 2. Warp source -> EPSG:3857 tiled GeoTIFF (+ alpha band for clean transparent edges).
         let dst = tmp.appendingPathComponent("warp-\(UUID().uuidString).tif")
-        guard GDALRaster.warpToWebMercator(src: srcCopy.path, dst: dst.path) else {
+        progress?.phase = .reprojecting
+        guard GDALRaster.warpToWebMercator(src: srcCopy.path, dst: dst.path, progress: progress) else {
             try? FileManager.default.removeItem(at: dst)
             return nil
         }
         warpedPath = dst.path
 
         // 3. Build overviews so zoomed-out reads are fast and smooth.
-        GDALRaster.buildOverviews(path: dst.path)
+        progress?.phase = .buildingOverviews
+        GDALRaster.buildOverviews(path: dst.path, progress: progress)
 
         // 4. Read geo metadata from the warped raster.
         guard let ds = GDALOpen(dst.path, GA_ReadOnly) else {
@@ -244,7 +256,7 @@ public final class GDALRaster {
 
     // MARK: - GDAL helpers
 
-    private static func warpToWebMercator(src: String, dst: String) -> Bool {
+    private static func warpToWebMercator(src: String, dst: String, progress: WarpProgress?) -> Bool {
         guard let srcDS = GDALOpen(src, GA_ReadOnly) else { return false }
         defer { GDALClose(srcDS) }
 
@@ -292,6 +304,13 @@ public final class GDALRaster {
         guard let opts = GDALWarpAppOptionsNew(cargv, nil) else { return false }
         defer { GDALWarpAppOptionsFree(opts) }
 
+        // GDAL calls the trampoline on this (background) thread as the warp proceeds;
+        // passUnretained is safe because `progress` outlives this synchronous call.
+        if let progress {
+            GDALWarpAppOptionsSetProgress(opts, gdalProgressTrampoline,
+                                          Unmanaged.passUnretained(progress).toOpaque())
+        }
+
         var srcArr: [GDALDatasetH?] = [warpSrc]
         var usageErr: Int32 = 0
         let out = srcArr.withUnsafeMutableBufferPointer { buf in
@@ -310,11 +329,13 @@ public final class GDALRaster {
             || GDALGetRasterColorInterpretation(band) == GCI_PaletteIndex
     }
 
-    private static func buildOverviews(path: String) {
+    private static func buildOverviews(path: String, progress: WarpProgress?) {
         guard let ds = GDALOpen(path, GA_Update) else { return }
         defer { GDALClose(ds) }
         var levels: [Int32] = [2, 4, 8, 16, 32]
-        _ = GDALBuildOverviews(ds, "AVERAGE", Int32(levels.count), &levels, 0, nil, nil, nil)
+        let arg = progress.map { Unmanaged.passUnretained($0).toOpaque() }
+        _ = GDALBuildOverviews(ds, "AVERAGE", Int32(levels.count), &levels, 0, nil,
+                               arg == nil ? nil : gdalProgressTrampoline, arg)
     }
 
     /// Builds a premultiplied RGBA CGImage from a north-up buffer.
@@ -392,4 +413,38 @@ public final class GDALRaster {
             lock.unlock()
         }
     }
+}
+
+// MARK: - Progress plumbing
+
+/// The step a load is in, reported to `GDALRaster.load(onProgress:)` so the caller can
+/// label it. Both steps report their own 0…1 fraction; the caller weights them.
+public enum WarpPhase: Sendable {
+    /// Reprojecting the source to Web Mercator (EPSG:3857) — the heavy step.
+    case reprojecting
+    /// Building zoom overviews (pyramids) on the warped raster — a shorter tail.
+    case buildingOverviews
+}
+
+/// Boxes the caller's progress closure so a C `GDALProgressFunc` can reach it through a
+/// `void *`. `phase` is set before each GDAL step so the per-step 0…1 it reports is
+/// tagged with the step it belongs to.
+private final class WarpProgress {
+    private let report: (WarpPhase, Double) -> Void
+    var phase: WarpPhase = .reprojecting
+
+    init(_ report: @escaping (WarpPhase, Double) -> Void) { self.report = report }
+
+    func emit(_ fraction: Double) {
+        report(phase, Swift.max(0, Swift.min(1, fraction)))
+    }
+}
+
+/// C-callable shim GDAL invokes as a warp / overview build proceeds. `pProgressArg`
+/// is the `WarpProgress` passed unretained; returning 1 (TRUE) keeps GDAL going.
+private let gdalProgressTrampoline: GDALProgressFunc = { complete, _, arg in
+    if let arg {
+        Unmanaged<WarpProgress>.fromOpaque(arg).takeUnretainedValue().emit(complete)
+    }
+    return 1
 }
