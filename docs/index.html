@@ -124,6 +124,9 @@ GDALEnvironment.bootstrap()                       <span class="cm">// once, at l
   <h3 class="symbol"><code><span class="kw">static func</span> open(warped url: <span class="ty">URL</span>) <span class="kw">async</span> -> <span class="ty">GDALRaster</span>?</code></h3>
   <p>Opens an already-warped EPSG:3857 GeoTIFF (one produced earlier via <code>cacheTo</code>) directly — no copy, render, or warp — for an instant, offline reload. The file is the caller's and is never deleted by the raster. Returns <code>nil</code> if it isn't a usable warped raster.</p>
 
+  <h3 class="symbol"><code><span class="kw">static func</span> sourceBounds(of url: <span class="ty">URL</span>) <span class="kw">async</span> -> <span class="ty">MercatorBounds</span>?</code></h3>
+  <p>A quick Web-Mercator footprint of a source raster — its geotransform corners transformed source-CRS → EPSG:3857, <strong>without warping</strong> — for a cheap orientation outline while the real warp runs. Returns <code>nil</code> for sources with no geotransform/CRS (e.g. a GeoPDF, whose driver isn't in the iOS build — parse its geo dict instead).</p>
+
   <h3 class="symbol"><code><span class="kw">let</span> bounds: <span class="ty">MercatorBounds</span></code></h3>
   <p>Web-Mercator footprint of the warped raster, in metres.</p>
 
