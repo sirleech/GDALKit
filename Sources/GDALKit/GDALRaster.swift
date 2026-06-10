@@ -87,6 +87,51 @@ public final class GDALRaster {
         }
     }
 
+    /// A quick Web-Mercator footprint of a source raster (its geotransform corners
+    /// transformed source-CRS → EPSG:3857), **without warping** — for a cheap orientation
+    /// outline while the real warp runs. Returns nil if the source has no geotransform/CRS
+    /// (e.g. a GeoPDF, whose driver isn't in the iOS build — parse its geo dict instead).
+    public static func sourceBounds(of url: URL) async -> MercatorBounds? {
+        await withCheckedContinuation { cont in
+            DispatchQueue.global(qos: .userInitiated).async {
+                cont.resume(returning: computeSourceBounds(url.path))
+            }
+        }
+    }
+
+    private static func computeSourceBounds(_ path: String) -> MercatorBounds? {
+        guard let ds = GDALOpen(path, GA_ReadOnly) else { return nil }
+        defer { GDALClose(ds) }
+
+        var g = [Double](repeating: 0, count: 6)
+        guard GDALGetGeoTransform(ds, &g) == CE_None else { return nil }
+        let w = Double(GDALGetRasterXSize(ds)), h = Double(GDALGetRasterYSize(ds))
+        guard let wkt = GDALGetProjectionRef(ds), strlen(wkt) > 0 else { return nil }
+
+        let src = OSRNewSpatialReference(wkt)
+        let dst = OSRNewSpatialReference(nil)
+        defer { OSRDestroySpatialReference(src); OSRDestroySpatialReference(dst) }
+        OSRImportFromEPSG(dst, 3857)
+        OSRSetAxisMappingStrategy(src, OAMS_TRADITIONAL_GIS_ORDER)   // x,y order on both sides
+        OSRSetAxisMappingStrategy(dst, OAMS_TRADITIONAL_GIS_ORDER)
+        guard let ct = OCTNewCoordinateTransformation(src, dst) else { return nil }
+        defer { OCTDestroyCoordinateTransformation(ct) }
+
+        // Four pixel corners → source-CRS coords (via the geotransform).
+        var xs = [Double](), ys = [Double]()
+        for (px, py) in [(0.0, 0.0), (w, 0.0), (w, h), (0.0, h)] {
+            xs.append(g[0] + px * g[1] + py * g[2])
+            ys.append(g[3] + px * g[4] + py * g[5])
+        }
+        var zs = [Double](repeating: 0, count: 4)
+        guard OCTTransform(ct, 4, &xs, &ys, &zs) == 1 else { return nil }
+
+        guard let minX = xs.min(), let maxX = xs.max(),
+              let minY = ys.min(), let maxY = ys.max(),
+              minX.isFinite, maxX.isFinite, minY.isFinite, maxY.isFinite else { return nil }
+        return MercatorBounds(minX: minX, minY: minY, maxX: maxX, maxY: maxY)
+    }
+
     /// Steps 1–3: copy the source into the sandbox, warp it to EPSG:3857, build overviews
     /// — into `cacheTo` (caller-owned) or a temp file (raster-owned) — then open it.
     private static func makeByWarping(sourceURL: URL, cacheTo: URL?,
